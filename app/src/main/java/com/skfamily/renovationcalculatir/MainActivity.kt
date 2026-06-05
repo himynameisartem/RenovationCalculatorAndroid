@@ -28,11 +28,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,9 +46,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.skfamily.renovationcalculatir.ui.calculator.CalculatorRoomsScreen
+import com.skfamily.renovationcalculatir.data.SavedEstimate
+import com.skfamily.renovationcalculatir.data.SavedEstimatesStore
 import com.skfamily.renovationcalculatir.ui.finalestimate.FinalEstimateScreen
 import com.skfamily.renovationcalculatir.ui.home.HomeScreen
 import com.skfamily.renovationcalculatir.ui.models.RoomDraftInput
+import com.skfamily.renovationcalculatir.ui.savedestimates.SavedEstimatesScreen
 import com.skfamily.renovationcalculatir.ui.theme.RenovationCalculatirTheme
 import com.skfamily.renovationcalculatir.ui.works.SummaryLine
 import com.skfamily.renovationcalculatir.ui.works.WorksScreen
@@ -85,18 +91,53 @@ private fun AppRoot() {
 @Composable
 private fun MainTabsScreen() {
     val navController = rememberNavController()
+    val context = LocalContext.current.applicationContext
     var infoDialogText by remember { mutableStateOf<String?>(null) }
     var roomsForWorks by remember { mutableStateOf<List<RoomDraftInput>>(emptyList()) }
     var finalEstimateLines by remember { mutableStateOf<List<SummaryLine>>(emptyList()) }
     var finalEstimateTotal by remember { mutableStateOf(0) }
+    var finalEstimateRooms by remember { mutableStateOf<List<RoomDraftInput>>(emptyList()) }
+    var selectedSavedEstimate by remember { mutableStateOf<SavedEstimate?>(null) }
+    var calculatorResetToken by remember { mutableIntStateOf(0) }
+    val savedEstimatesStore = remember { SavedEstimatesStore(context) }
+
+    fun clearCalculatorFlowState() {
+        selectedSavedEstimate = null
+        roomsForWorks = emptyList()
+        finalEstimateLines = emptyList()
+        finalEstimateTotal = 0
+        finalEstimateRooms = emptyList()
+    }
 
     fun navigateToCalculatorStart() {
+        clearCalculatorFlowState()
+        calculatorResetToken++
         val popped = navController.popBackStack("calculator", inclusive = false)
         if (!popped) {
             navController.navigate("calculator") {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
-                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
+    fun navigateToSavedEstimatesList() {
+        selectedSavedEstimate = null
+        val popped = navController.popBackStack("estimates", inclusive = false)
+        if (!popped) {
+            navController.navigate("estimates") {
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
+    fun navigateToHome() {
+        clearCalculatorFlowState()
+        selectedSavedEstimate = null
+        val popped = navController.popBackStack("home", inclusive = false)
+        if (!popped) {
+            navController.navigate("home") {
                 launchSingleTop = true
                 restoreState = true
             }
@@ -114,15 +155,21 @@ private fun MainTabsScreen() {
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+                val currentRoute = navBackStackEntry?.destination?.route
 
                 tabs.forEach { tab ->
-                    val isSelected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
+                    val isSelected = when (tab.route) {
+                        "calculator" -> currentRoute in setOf("calculator", "works", "final_estimate")
+                        "estimates" -> currentRoute in setOf("estimates", "saved_estimate_detail")
+                        else -> currentRoute == tab.route
+                    }
                     NavigationBarItem(
                         selected = isSelected,
                         onClick = {
                             when (tab.route) {
+                                "home" -> navigateToHome()
                                 "calculator" -> navigateToCalculatorStart()
+                                "estimates" -> navigateToSavedEstimatesList()
                                 else -> navController.navigate(tab.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
@@ -158,16 +205,18 @@ private fun MainTabsScreen() {
                 )
             }
             composable("calculator") {
-                CalculatorRoomsScreen(
-                    onSkip = {
-                        roomsForWorks = emptyList()
-                        navController.navigate("works")
-                    },
-                    onContinue = { rooms ->
-                        roomsForWorks = rooms
-                        navController.navigate("works")
-                    }
-                )
+                key(calculatorResetToken) {
+                    CalculatorRoomsScreen(
+                        onSkip = {
+                            roomsForWorks = emptyList()
+                            navController.navigate("works")
+                        },
+                        onContinue = { rooms ->
+                            roomsForWorks = rooms
+                            navController.navigate("works")
+                        }
+                    )
+                }
             }
             composable("works") {
                 WorksScreen(
@@ -176,6 +225,7 @@ private fun MainTabsScreen() {
                     onFinish = { lines, total ->
                         finalEstimateLines = lines
                         finalEstimateTotal = total
+                        finalEstimateRooms = roomsForWorks
                         navController.navigate("final_estimate") {
                             launchSingleTop = true
                         }
@@ -187,10 +237,53 @@ private fun MainTabsScreen() {
                     lines = finalEstimateLines,
                     total = finalEstimateTotal,
                     onBackToWorks = { navController.popBackStack() },
-                    onSaveEstimate = { "Смета сохранена. Следующим шагом подключим реальное сохранение." }
+                    onSaveEstimate = {
+                        savedEstimatesStore.saveEstimate(
+                            total = finalEstimateTotal,
+                            rooms = finalEstimateRooms,
+                            selectedItems = finalEstimateLines.associate { it.itemId to it.quantity },
+                            lines = finalEstimateLines
+                        )
+                    }
                 )
             }
-            composable("estimates") { PlaceholderScreen("Сметы") }
+            composable("estimates") {
+                SavedEstimatesScreen(
+                    store = savedEstimatesStore,
+                    onOpenNewEstimate = { navigateToCalculatorStart() },
+                    onOpenEstimate = { estimate ->
+                        selectedSavedEstimate = estimate
+                        navController.navigate("saved_estimate_detail") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+            composable("saved_estimate_detail") {
+                val estimate = selectedSavedEstimate
+                if (estimate != null) {
+                    FinalEstimateScreen(
+                        lines = estimate.lines.map { line ->
+                            SummaryLine(
+                                itemId = line.id,
+                                title = line.title,
+                                quantity = line.quantity,
+                                unit = line.unit,
+                                unitPrice = line.unitPrice,
+                                subtotal = line.subtotal
+                            )
+                        },
+                        total = estimate.total,
+                        onBackToWorks = {
+                            selectedSavedEstimate = null
+                            navController.popBackStack()
+                        },
+                        onSaveEstimate = { "Сохранено" }
+                    )
+                } else {
+                    PlaceholderScreen("Смета не найдена")
+                }
+            }
         }
 
         infoDialogText?.let { message ->

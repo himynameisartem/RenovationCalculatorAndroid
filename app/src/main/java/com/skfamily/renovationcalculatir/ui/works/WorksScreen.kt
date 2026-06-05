@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +67,7 @@ fun WorksScreen(
 ) {
     val state = vm.state
     val selectedCategory = state.categories.getOrNull(state.selectedCategoryIndex)
+    val categoryTabsState = rememberLazyListState()
     var selectedItemForDialog by remember { mutableStateOf<CatalogItem?>(null) }
     var showSummary by remember { mutableStateOf(false) }
 
@@ -79,6 +81,7 @@ fun WorksScreen(
         CategoryTabs(
             categories = state.categories,
             selected = state.selectedCategoryIndex,
+            listState = categoryTabsState,
             onSelect = vm::selectCategory
         )
 
@@ -144,6 +147,13 @@ fun WorksScreen(
         )
     }
 
+    LaunchedEffect(state.selectedCategoryIndex, state.categories.size) {
+        if (state.categories.isNotEmpty()) {
+            val targetIndex = state.selectedCategoryIndex.coerceIn(0, state.categories.lastIndex)
+            categoryTabsState.animateScrollToItem(targetIndex)
+        }
+    }
+
     LaunchedEffect(Unit) { vm.loadIfNeeded() }
 }
 
@@ -199,8 +209,17 @@ private fun StepItem(number: Int, title: String, active: Boolean) {
 }
 
 @Composable
-private fun CategoryTabs(categories: List<CatalogCategory>, selected: Int, onSelect: (Int) -> Unit) {
-    LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun CategoryTabs(
+    categories: List<CatalogCategory>,
+    selected: Int,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onSelect: (Int) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        state = listState,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         item { Spacer(modifier = Modifier.size(16.dp)) }
         items(categories.indices.toList()) { index ->
             val active = index == selected

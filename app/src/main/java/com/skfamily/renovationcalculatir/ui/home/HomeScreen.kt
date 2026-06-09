@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Calculate
@@ -42,10 +43,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.skfamily.renovationcalculatir.R
 import com.skfamily.renovationcalculatir.ui.request.RequestFormSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,41 +78,43 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Color(0xFFF2F2F7))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             HeroBlock()
 
-            HomeActionCard(
-                title = "Калькулятор",
-                subtitle = "Рассчитайте стоимость ремонта квартиры",
-                icon = Icons.Default.Calculate,
-                onClick = onOpenCalculator,
-                primary = true
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                HomeActionCard(
+                    title = "Калькулятор",
+                    subtitle = "Рассчитайте стоимость ремонта квартиры",
+                    icon = Icons.Default.Calculate,
+                    onClick = onOpenCalculator,
+                    primary = true
+                )
 
-            HomeActionCard(
-                title = "Заявка на ремонт",
-                subtitle = "Оставьте заявку и мы свяжемся с вами",
-                icon = Icons.Default.Checklist,
-                onClick = {
-                    onOpenRequest()
-                    showRequestForm = true
-                }
-            )
+                HomeActionCard(
+                    title = "Заявка на ремонт",
+                    subtitle = "Оставьте заявку и мы свяжемся с вами",
+                    icon = Icons.Default.Checklist,
+                    onClick = {
+                        onOpenRequest()
+                        showRequestForm = true
+                    }
+                )
 
-            HomeActionCard(
-                title = "Актуальный прайс",
-                subtitle = "Посмотрите актуальные цены на работы",
-                icon = Icons.Default.Payments,
-                onClick = {
-                    onOpenPrice()
-                    showPriceConfirm = true
-                }
-            )
+                HomeActionCard(
+                    title = "Актуальный прайс",
+                    subtitle = "Посмотрите актуальные цены на работы",
+                    icon = Icons.Default.Payments,
+                    onClick = {
+                        onOpenPrice()
+                        showPriceConfirm = true
+                    }
+                )
+            }
         }
 
         if (showRequestForm) {
@@ -199,21 +205,19 @@ private fun HeroBlock() {
         modifier = Modifier
             .fillMaxWidth()
             .height(190.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        Color.White,
-                        Color(0xFFF4F5F8),
-                        Color(0xFFEDEFF4)
-                    )
-                )
-            )
-            .padding(18.dp)
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.main_page_image),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.align(Alignment.TopStart)
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp)
         ) {
             Text(
                 text = "Ремонт\nквартир",
@@ -325,9 +329,9 @@ private fun HomeActionCard(
             Spacer(modifier = Modifier.size(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = titleColor, fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                Text(title, color = titleColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(subtitle, color = subtitleColor, fontSize = 16.sp, lineHeight = 18.sp)
+                Text(subtitle, color = subtitleColor, fontSize = 12.sp, lineHeight = 14.sp)
             }
 
             Box(

@@ -1,5 +1,6 @@
 package com.skfamily.renovationcalculatir.ui.finalestimate
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,16 +41,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.skfamily.renovationcalculatir.R
 import com.skfamily.renovationcalculatir.ui.works.SummaryLine
 import com.skfamily.renovationcalculatir.ui.request.RequestFormSheet
 
 data class FinalCompany(
     val name: String,
-    val logoText: String,
+    val logoRes: Int,
     val websiteUrl: String,
     val phoneUrl: String,
     val phoneLabel: String,
@@ -73,7 +76,7 @@ fun FinalEstimateScreen(
         listOf(
             FinalCompany(
                 name = "ГК Поколение",
-                logoText = "П",
+                logoRes = R.drawable.pokolenie_logo,
                 websiteUrl = "https://gkpokolenie.ru",
                 phoneUrl = "tel:+79581005418",
                 phoneLabel = "+7 958 100-54-18",
@@ -81,7 +84,7 @@ fun FinalEstimateScreen(
             ),
             FinalCompany(
                 name = "Легион",
-                logoText = "Л",
+                logoRes = R.drawable.legion_logo,
                 websiteUrl = "https://legionremont.ru",
                 phoneUrl = "tel:+79158303600",
                 phoneLabel = "+7 915 830-36-00",
@@ -89,7 +92,7 @@ fun FinalEstimateScreen(
             ),
             FinalCompany(
                 name = "СК Фемели",
-                logoText = "Ф",
+                logoRes = R.drawable.femily_logo,
                 websiteUrl = "https://skfamily.moscow",
                 phoneUrl = "tel:+79158303600",
                 phoneLabel = "+7 915 830-36-00",
@@ -97,7 +100,7 @@ fun FinalEstimateScreen(
             ),
             FinalCompany(
                 name = "ТЛР Групп",
-                logoText = "Т",
+                logoRes = R.drawable.trl_group_logo,
                 websiteUrl = "https://skfamily.moscow",
                 phoneUrl = "tel:+74950217123",
                 phoneLabel = "+7 495 021-71-23",
@@ -396,11 +399,10 @@ private fun CompanyCard(
                     .background(Color(0xFFF7F8FB), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = company.logoText,
-                    color = company.accent,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                Image(
+                    painter = painterResource(id = company.logoRes),
+                    contentDescription = company.name,
+                    modifier = Modifier.size(42.dp)
                 )
 
                 if (selected) {

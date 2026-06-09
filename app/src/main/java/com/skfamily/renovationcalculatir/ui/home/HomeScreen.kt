@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
@@ -40,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -92,7 +94,17 @@ fun HomeScreen(
                     subtitle = "Рассчитайте стоимость ремонта квартиры",
                     icon = Icons.Default.Calculate,
                     onClick = onOpenCalculator,
-                    primary = true
+                    primary = true,
+                    cardBackground = Brush.horizontalGradient(
+                        listOf(Color(0xFF3F7BE3), Color(0xFF5BA6F2))
+                    ),
+                    titleColor = Color.White,
+                    subtitleColor = Color.White.copy(alpha = 0.82f),
+                    iconBackgroundColor = Color.White.copy(alpha = 0.16f),
+                    iconTint = Color.White,
+                    arrowTint = Color(0xFF3778F2),
+                    decorativeImageRes = R.drawable.pages_icon,
+                    decorativeImageAlpha = 0.12f
                 )
 
                 HomeActionCard(
@@ -102,7 +114,15 @@ fun HomeScreen(
                     onClick = {
                         onOpenRequest()
                         showRequestForm = true
-                    }
+                    },
+                    cardBackground = Brush.horizontalGradient(listOf(Color.White, Color.White)),
+                    titleColor = Color(0xFF101114),
+                    subtitleColor = Color(0xFF6E737D),
+                    iconBackgroundColor = Color(0xFFEAF1FF),
+                    iconTint = Color(0xFF2A6FF3),
+                    arrowTint = Color(0xFF3778F2),
+                    decorativeImageRes = R.drawable.docs_icon,
+                    decorativeImageAlpha = 0.12f
                 )
 
                 HomeActionCard(
@@ -112,7 +132,15 @@ fun HomeScreen(
                     onClick = {
                         onOpenPrice()
                         showPriceConfirm = true
-                    }
+                    },
+                    cardBackground = Brush.horizontalGradient(listOf(Color.White, Color.White)),
+                    titleColor = Color(0xFF101114),
+                    subtitleColor = Color(0xFF6E737D),
+                    iconBackgroundColor = Color(0xFFEAF7EA),
+                    iconTint = Color(0xFF6CAB5F),
+                    arrowTint = Color(0xFF6AAF57),
+                    decorativeImageRes = R.drawable.coins_icon,
+                    decorativeImageAlpha = 0.12f
                 )
             }
         }
@@ -288,18 +316,16 @@ private fun HomeActionCard(
     subtitle: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    primary: Boolean = false
+    primary: Boolean = false,
+    cardBackground: Brush = Brush.horizontalGradient(listOf(Color.White, Color.White)),
+    titleColor: Color = Color(0xFF101114),
+    subtitleColor: Color = Color(0xFF6E737D),
+    iconBackgroundColor: Color = Color(0xFFE9EEF9),
+    iconTint: Color = Color(0xFF2A6FF3),
+    arrowTint: Color = Color(0xFF4E535E),
+    decorativeImageRes: Int? = null,
+    decorativeImageAlpha: Float = 0.1f
 ) {
-    val background = if (primary) {
-        Brush.horizontalGradient(listOf(Color(0xFF3F7BE3), Color(0xFF5BA6F2)))
-    } else {
-        Brush.horizontalGradient(listOf(Color.White, Color.White))
-    }
-    val titleColor = if (primary) Color.White else Color(0xFF101114)
-    val subtitleColor = if (primary) Color.White.copy(alpha = 0.8f) else Color(0xFF6E737D)
-    val iconBg = if (primary) Color.White.copy(alpha = 0.2f) else Color(0xFFE9EEF9)
-    val iconColor = if (primary) Color.White else Color(0xFF2A6FF3)
-
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         shape = RoundedCornerShape(26.dp),
@@ -309,43 +335,84 @@ private fun HomeActionCard(
             .height(118.dp)
             .clickable(onClick = onClick)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(background)
-                .padding(horizontal = 14.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .background(cardBackground)
+                .padding(horizontal = 14.dp, vertical = 16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(iconBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconColor)
-            }
-
-            Spacer(modifier = Modifier.size(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = titleColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(subtitle, color = subtitleColor, fontSize = 12.sp, lineHeight = 14.sp)
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
+            if (decorativeImageRes != null) {
+                Image(
+                    painter = painterResource(id = decorativeImageRes),
                     contentDescription = null,
-                    tint = if (primary) Color(0xFF2A6FF3) else Color(0xFF4E535E)
+                    contentScale = ContentScale.Fit,
+                    alpha = decorativeImageAlpha,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .size(96.dp)
+                        .padding(end = 8.dp)
                 )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(iconBackgroundColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = iconTint)
+                }
+
+                Spacer(modifier = Modifier.size(14.dp))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .widthIn(max = 168.dp)
+                    ) {
+                        Text(
+                            title,
+                            color = titleColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            subtitle,
+                            color = subtitleColor,
+                            fontSize = 10.5.sp,
+                            lineHeight = 12.sp,
+                            maxLines = 3,
+                            softWrap = true
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .shadow(6.dp, CircleShape, clip = false)
+                        .background(Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        tint = arrowTint
+                    )
+                }
             }
         }
     }

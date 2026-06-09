@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -320,7 +322,11 @@ private fun LaunchLoadingScreen(showProgress: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = "RenovationCalculator")
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Renovation Calculator",
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
             Spacer(modifier = Modifier.height(16.dp))
             AnimatedVisibility(visible = showProgress) {
                 CircularProgressIndicator()

@@ -40,12 +40,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skfamily.renovationcalculatir.ui.works.SummaryLine
+import com.skfamily.renovationcalculatir.ui.request.RequestFormSheet
 
 data class FinalCompany(
     val name: String,
@@ -63,11 +63,10 @@ fun FinalEstimateScreen(
     onBackToWorks: () -> Unit,
     onSaveEstimate: () -> String,
 ) {
-    val uriHandler = LocalUriHandler.current
     var infoVisible by remember { mutableStateOf(false) }
     var selectedCompany by remember { mutableStateOf<FinalCompany?>(null) }
-    var showContactsDialog by remember { mutableStateOf(false) }
-    var showRequestPlaceholder by remember { mutableStateOf(false) }
+    var showContactsSheet by remember { mutableStateOf(false) }
+    var showRequestForm by remember { mutableStateOf(false) }
     var saveDialogText by remember { mutableStateOf<String?>(null) }
 
     val companies = remember {
@@ -169,8 +168,8 @@ fun FinalEstimateScreen(
 
                 ActionBanner(
                     selectedCompany = selectedCompany,
-                    onRequestClick = { showRequestPlaceholder = true },
-                    onContactsClick = { showContactsDialog = true }
+                    onRequestClick = { showRequestForm = true },
+                    onContactsClick = { showContactsSheet = true }
                 )
             }
         }
@@ -192,50 +191,22 @@ fun FinalEstimateScreen(
         }
     }
 
-    if (showRequestPlaceholder) {
-        AlertDialog(
-            onDismissRequest = { showRequestPlaceholder = false },
-            confirmButton = {
-                Button(onClick = { showRequestPlaceholder = false }) {
-                    Text("Ок")
-                }
-            },
-            title = { Text("Заказать звонок") },
-            text = { Text("Форма заявки будет следующим шагом. Сейчас экран сметы уже подключён.") }
+    if (showRequestForm) {
+        RequestFormSheet(
+            estimateLinesText = estimateLinesForRequest(lines),
+            onDismiss = { showRequestForm = false }
         )
     }
 
-    if (showContactsDialog) {
+    if (showContactsSheet) {
         val company = selectedCompany
         if (company != null) {
-        AlertDialog(
-            onDismissRequest = { showContactsDialog = false },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        uriHandler.openUri(company.websiteUrl)
-                        showContactsDialog = false
-                    }
-                ) {
-                    Text("Сайт")
-                }
-            },
-            dismissButton = {
-                Button(
-                    onClick = {
-                        uriHandler.openUri(company.phoneUrl)
-                        showContactsDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEAF1FF))
-                ) {
-                    Text("Позвонить", color = Color(0xFF2A6FF3))
-                }
-            },
-            title = { Text(company.name) },
-            text = { Text(company.phoneLabel) }
-        )
+            CompanyContactsSheet(
+                company = company,
+                onDismiss = { showContactsSheet = false }
+            )
         } else {
-            showContactsDialog = false
+            showContactsSheet = false
         }
     }
 
@@ -627,6 +598,17 @@ private fun ActionBanner(
                 }
             }
         }
+    }
+}
+
+private fun estimateLinesForRequest(lines: List<SummaryLine>): String? {
+    if (lines.isEmpty()) return null
+
+    return lines.joinToString(separator = "\n") { line ->
+        val quantity = String.format("%.1f", line.quantity)
+        val unitPrice = String.format("%.0f", line.unitPrice)
+        val subtotal = String.format("%.0f", line.subtotal)
+        "${line.title}: $quantity ${line.unit} × $unitPrice ₽ = $subtotal ₽"
     }
 }
 

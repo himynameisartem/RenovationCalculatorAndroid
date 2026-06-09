@@ -133,7 +133,6 @@ private fun MainTabsScreen() {
     }
 
     fun navigateToHome() {
-        clearCalculatorFlowState()
         selectedSavedEstimate = null
         val popped = navController.popBackStack("home", inclusive = false)
         if (!popped) {
@@ -196,12 +195,8 @@ private fun MainTabsScreen() {
                     onOpenCalculator = {
                         navigateToCalculatorStart()
                     },
-                    onOpenRequest = {
-                        infoDialogText = "Форма заявки будет следующим шагом. Сейчас подключили рабочий каркас."
-                    },
-                    onOpenPrice = {
-                        infoDialogText = "Загрузка PDF-прайса будет следующим шагом Android-версии."
-                    }
+                    onOpenRequest = {},
+                    onOpenPrice = {}
                 )
             }
             composable("calculator") {

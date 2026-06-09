@@ -150,6 +150,8 @@ fun CalculatorRoomsScreen(
                     RoomCountCard(
                         title = "Жилые комнаты",
                         icon = Icons.Default.Home,
+                        iconTint = Color(0xFF5B93EA),
+                        iconBackgroundColor = Color(0x1F5B93EA),
                         count = livingCount,
                         onMinus = { if (livingCount > 0) livingCount-- },
                         onPlus = { livingCount++ }
@@ -159,6 +161,8 @@ fun CalculatorRoomsScreen(
                     RoomCountCard(
                         title = "Кухня",
                         icon = Icons.Default.Restaurant,
+                        iconTint = Color(0xFF4CAF6E),
+                        iconBackgroundColor = Color(0x1F4CAF6E),
                         count = kitchenCount,
                         onMinus = { if (kitchenCount > 0) kitchenCount-- },
                         onPlus = { kitchenCount++ }
@@ -168,6 +172,8 @@ fun CalculatorRoomsScreen(
                     RoomCountCard(
                         title = "Санузел",
                         icon = Icons.Default.Bathtub,
+                        iconTint = Color(0xFF8264C8),
+                        iconBackgroundColor = Color(0x1F8264C8),
                         count = bathroomCount,
                         onMinus = { if (bathroomCount > 0) bathroomCount-- },
                         onPlus = { bathroomCount++ }
@@ -177,6 +183,8 @@ fun CalculatorRoomsScreen(
                     RoomCountCard(
                         title = "Прихожая",
                         icon = Icons.Default.MeetingRoom,
+                        iconTint = Color(0xFFE07A4E),
+                        iconBackgroundColor = Color(0x1FE07A4E),
                         count = hallwayCount,
                         onMinus = { if (hallwayCount > 0) hallwayCount-- },
                         onPlus = { hallwayCount++ }
@@ -329,6 +337,8 @@ private fun StepItem(number: Int, title: String, active: Boolean) {
 private fun RoomCountCard(
     title: String,
     icon: ImageVector,
+    iconTint: Color,
+    iconBackgroundColor: Color,
     count: Int,
     onMinus: () -> Unit,
     onPlus: () -> Unit,
@@ -350,13 +360,13 @@ private fun RoomCountCard(
                 Box(
                     modifier = Modifier
                         .size(30.dp)
-                        .background(Color(0xFFEAF1FF), RoundedCornerShape(10.dp)),
+                        .background(iconBackgroundColor, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = Color(0xFF2A6FF3),
+                        tint = iconTint,
                         modifier = Modifier.size(18.dp)
                     )
                 }

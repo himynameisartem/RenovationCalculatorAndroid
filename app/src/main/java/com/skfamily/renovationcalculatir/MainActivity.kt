@@ -124,7 +124,6 @@ private fun MainTabsScreen() {
     }
 
     fun navigateToSavedEstimatesList() {
-        selectedSavedEstimate = null
         val popped = navController.popBackStack("estimates", inclusive = false)
         if (!popped) {
             navController.navigate("estimates") {
@@ -135,7 +134,6 @@ private fun MainTabsScreen() {
     }
 
     fun navigateToHome() {
-        selectedSavedEstimate = null
         val popped = navController.popBackStack("home", inclusive = false)
         if (!popped) {
             navController.navigate("home") {
@@ -272,13 +270,12 @@ private fun MainTabsScreen() {
                         },
                         total = estimate.total,
                         onBackToWorks = {
-                            selectedSavedEstimate = null
                             navController.popBackStack()
                         },
                         onSaveEstimate = { "Сохранено" }
                     )
                 } else {
-                    PlaceholderScreen("Смета не найдена")
+                    Box(modifier = Modifier.fillMaxSize())
                 }
             }
         }

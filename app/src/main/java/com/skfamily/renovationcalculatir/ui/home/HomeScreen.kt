@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Checklist
@@ -30,9 +32,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +56,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.skfamily.renovationcalculatir.R
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingKeys
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingOverlay
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPage
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPrefs
 import com.skfamily.renovationcalculatir.ui.request.RequestFormSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,8 +80,33 @@ fun HomeScreen(
     var isDownloadingPrice by remember { mutableStateOf(false) }
     var downloadErrorText by remember { mutableStateOf<String?>(null) }
     var showDownloadError by remember { mutableStateOf(false) }
+    var showOnboarding by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
+    val onboardingPrefs = remember(context) { OnboardingPrefs(context) }
+    val onboardingPages = remember {
+        listOf(
+            OnboardingPage(
+                title = "Добро пожаловать",
+                description = "На главном экране собраны быстрые сценарии: калькулятор, заявка на ремонт и актуальный прайс."
+            ),
+            OnboardingPage(
+                title = "Переход к расчету",
+                description = "Откройте калькулятор, чтобы выбрать помещения, добавить работы и собрать итоговую смету."
+            ),
+            OnboardingPage(
+                title = "Дополнительные действия",
+                description = "Здесь же можно оставить заявку на ремонт и скачать актуальный прайс в PDF."
+            )
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        if (onboardingPrefs.shouldShow(OnboardingKeys.HOME)) {
+            showOnboarding = true
+            onboardingPrefs.markShown(OnboardingKeys.HOME)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -81,7 +114,9 @@ fun HomeScreen(
             .background(Color(0xFFF2F2F7))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            HeroBlock()
+            HeroBlock(
+                onHelpClick = { showOnboarding = true }
+            )
 
             Column(
                 modifier = Modifier
@@ -224,11 +259,18 @@ fun HomeScreen(
                 }
             )
         }
+
+        if (showOnboarding) {
+            OnboardingOverlay(
+                pages = onboardingPages,
+                onDismiss = { showOnboarding = false }
+            )
+        }
     }
 }
 
 @Composable
-private fun HeroBlock() {
+private fun HeroBlock(onHelpClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -258,6 +300,21 @@ private fun HeroBlock() {
                 text = "Рассчитайте стоимость\nи выберите подходящий\nвариант ремонта",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF666A73)
+            )
+        }
+
+        IconButton(
+            onClick = onHelpClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = 16.dp)
+                .size(44.dp)
+                .background(Color.White.copy(alpha = 0.78f), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                contentDescription = "Подсказки",
+                tint = Color(0xFF101114)
             )
         }
     }
@@ -408,7 +465,7 @@ private fun HomeActionCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
                         tint = arrowTint
                     )

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bathtub
 import androidx.compose.material.icons.filled.Home
@@ -49,7 +50,13 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SquareFoot
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import com.skfamily.renovationcalculatir.ui.models.RoomDraftInput
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingKeys
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingOverlay
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPage
+import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPrefs
+import androidx.compose.runtime.LaunchedEffect
 
 private enum class RoomType(val title: String) {
     LIVING("Жилая"),
@@ -73,11 +80,37 @@ fun CalculatorRoomsScreen(
     onSkip: () -> Unit,
     onContinue: (List<RoomDraftInput>) -> Unit,
 ) {
+    val context = LocalContext.current
     var livingCount by remember { mutableStateOf(0) }
     var kitchenCount by remember { mutableStateOf(0) }
     var bathroomCount by remember { mutableStateOf(0) }
     var hallwayCount by remember { mutableStateOf(0) }
+    var showOnboarding by remember { mutableStateOf(false) }
     val rooms = remember { mutableStateListOf<RoomDraft>() }
+    val onboardingPrefs = remember(context) { OnboardingPrefs(context) }
+    val onboardingPages = remember {
+        listOf(
+            OnboardingPage(
+                title = "Шаг 1. Помещения",
+                description = "Укажите количество комнат, затем заполните названия и площадь для расчета работ по помещениям."
+            ),
+            OnboardingPage(
+                title = "Гибкий старт",
+                description = "Если комнаты пока не нужны, можно нажать «Пропустить» и перейти к выбору работ без них."
+            ),
+            OnboardingPage(
+                title = "Что дальше",
+                description = "После заполнения комнат нажмите «Продолжить», чтобы перейти к категориям работ и собрать смету."
+            )
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        if (onboardingPrefs.shouldShow(OnboardingKeys.CALCULATOR)) {
+            showOnboarding = true
+            onboardingPrefs.markShown(OnboardingKeys.CALCULATOR)
+        }
+    }
 
     fun syncRooms(type: RoomType, count: Int) {
         val current = rooms.filter { it.type == type }
@@ -109,179 +142,206 @@ fun CalculatorRoomsScreen(
     val isContinueEnabled = rooms.isNotEmpty()
     val totalArea = rooms.sumOf { it.areaText.replace(",", ".").toDoubleOrNull() ?: 0.0 }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF2F2F7))
     ) {
-        Text(
-            text = "Калькулятор",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        StepsHeader()
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                item {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Укажите помещения",
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Выберите количество комнат и заполните параметры.",
-                        color = Color(0xFF6E737D)
+                Text(
+                    text = "Калькулятор",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                IconButton(
+                    onClick = { showOnboarding = true },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = "Подсказки",
+                        tint = Color(0xFF101114)
                     )
                 }
+            }
+            StepsHeader()
 
-                item {
-                    RoomCountCard(
-                        title = "Жилые комнаты",
-                        icon = Icons.Default.Home,
-                        iconTint = Color(0xFF5B93EA),
-                        iconBackgroundColor = Color(0x1F5B93EA),
-                        count = livingCount,
-                        onMinus = { if (livingCount > 0) livingCount-- },
-                        onPlus = { livingCount++ }
-                    )
-                }
-                item {
-                    RoomCountCard(
-                        title = "Кухня",
-                        icon = Icons.Default.Restaurant,
-                        iconTint = Color(0xFF4CAF6E),
-                        iconBackgroundColor = Color(0x1F4CAF6E),
-                        count = kitchenCount,
-                        onMinus = { if (kitchenCount > 0) kitchenCount-- },
-                        onPlus = { kitchenCount++ }
-                    )
-                }
-                item {
-                    RoomCountCard(
-                        title = "Санузел",
-                        icon = Icons.Default.Bathtub,
-                        iconTint = Color(0xFF8264C8),
-                        iconBackgroundColor = Color(0x1F8264C8),
-                        count = bathroomCount,
-                        onMinus = { if (bathroomCount > 0) bathroomCount-- },
-                        onPlus = { bathroomCount++ }
-                    )
-                }
-                item {
-                    RoomCountCard(
-                        title = "Прихожая",
-                        icon = Icons.Default.MeetingRoom,
-                        iconTint = Color(0xFFE07A4E),
-                        iconBackgroundColor = Color(0x1FE07A4E),
-                        count = hallwayCount,
-                        onMinus = { if (hallwayCount > 0) hallwayCount-- },
-                        onPlus = { hallwayCount++ }
-                    )
-                }
-
-                item {
-                    if (rooms.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Параметры комнат",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = 8.dp)
+                            text = "Укажите помещения",
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Выберите количество комнат и заполните параметры.",
+                            color = Color(0xFF6E737D)
                         )
                     }
-                }
-                if (rooms.isNotEmpty()) {
-                    items(rooms, key = { it.id }) { room ->
-                        RoomParamsCard(room = room)
+
+                    item {
+                        RoomCountCard(
+                            title = "Жилые комнаты",
+                            icon = Icons.Default.Home,
+                            iconTint = Color(0xFF5B93EA),
+                            iconBackgroundColor = Color(0x1F5B93EA),
+                            count = livingCount,
+                            onMinus = { if (livingCount > 0) livingCount-- },
+                            onPlus = { livingCount++ }
+                        )
                     }
+                    item {
+                        RoomCountCard(
+                            title = "Кухня",
+                            icon = Icons.Default.Restaurant,
+                            iconTint = Color(0xFF4CAF6E),
+                            iconBackgroundColor = Color(0x1F4CAF6E),
+                            count = kitchenCount,
+                            onMinus = { if (kitchenCount > 0) kitchenCount-- },
+                            onPlus = { kitchenCount++ }
+                        )
+                    }
+                    item {
+                        RoomCountCard(
+                            title = "Санузел",
+                            icon = Icons.Default.Bathtub,
+                            iconTint = Color(0xFF8264C8),
+                            iconBackgroundColor = Color(0x1F8264C8),
+                            count = bathroomCount,
+                            onMinus = { if (bathroomCount > 0) bathroomCount-- },
+                            onPlus = { bathroomCount++ }
+                        )
+                    }
+                    item {
+                        RoomCountCard(
+                            title = "Прихожая",
+                            icon = Icons.Default.MeetingRoom,
+                            iconTint = Color(0xFFE07A4E),
+                            iconBackgroundColor = Color(0x1FE07A4E),
+                            count = hallwayCount,
+                            onMinus = { if (hallwayCount > 0) hallwayCount-- },
+                            onPlus = { hallwayCount++ }
+                        )
+                    }
+
+                    item {
+                        if (rooms.isNotEmpty()) {
+                            Text(
+                                text = "Параметры комнат",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                    if (rooms.isNotEmpty()) {
+                        items(rooms, key = { it.id }) { room ->
+                            RoomParamsCard(room = room)
+                        }
+                    }
+
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .background(Color(0xFFEAF1FF), RoundedCornerShape(10.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.SquareFoot,
+                                            contentDescription = null,
+                                            tint = Color(0xFF2A6FF3),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                    Text("Общая площадь")
+                                }
+                                Text(String.format("%.1f м²", totalArea), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(96.dp)) }
                 }
 
-                item {
-                    Card(
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth(0.5f)) {
+                        TextButton(
+                            onClick = onSkip,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = Color(0xFFD7D8DD),
+                                contentColor = Color.Black
+                            )
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                        .background(Color(0xFFEAF1FF), RoundedCornerShape(10.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.SquareFoot,
-                                        contentDescription = null,
-                                        tint = Color(0xFF2A6FF3),
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                            Text("Пропустить", modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                    }
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                val mapped = rooms.mapNotNull { room ->
+                                    val area = room.areaText.replace(",", ".").toDoubleOrNull() ?: 0.0
+                                    if (area > 0) RoomDraftInput(room.title, area) else null
                                 }
-                                Spacer(modifier = Modifier.size(8.dp))
-                                Text("Общая площадь")
-                            }
-                            Text(String.format("%.1f м²", totalArea), fontWeight = FontWeight.Bold)
+                                onContinue(mapped)
+                            },
+                            enabled = isContinueEnabled,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("Продолжить", modifier = Modifier.padding(vertical = 8.dp))
                         }
                     }
                 }
-
-                item { Spacer(modifier = Modifier.height(96.dp)) }
             }
+        }
 
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(modifier = Modifier.fillMaxWidth(0.5f)) {
-                    TextButton(
-                        onClick = onSkip,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.textButtonColors(
-                            containerColor = Color(0xFFD7D8DD),
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text("Пропустить", modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = {
-                            val mapped = rooms.mapNotNull { room ->
-                                val area = room.areaText.replace(",", ".").toDoubleOrNull() ?: 0.0
-                                if (area > 0) RoomDraftInput(room.title, area) else null
-                            }
-                            onContinue(mapped)
-                        },
-                        enabled = isContinueEnabled,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text("Продолжить", modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-            }
+        if (showOnboarding) {
+            OnboardingOverlay(
+                pages = onboardingPages,
+                onDismiss = { showOnboarding = false }
+            )
         }
     }
 }

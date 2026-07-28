@@ -1,6 +1,7 @@
 package com.skfamily.renovationcalculatir.ui.onboarding
 
 import android.content.Context
+import androidx.core.content.edit
 
 class OnboardingPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
@@ -8,7 +9,9 @@ class OnboardingPrefs(context: Context) {
     fun shouldShow(key: String): Boolean = prefs.getBoolean(key, true)
 
     fun markShown(key: String) {
-        prefs.edit().putBoolean(key, false).apply()
+        prefs.edit {
+            putBoolean(key, false)
+        }
     }
 }
 

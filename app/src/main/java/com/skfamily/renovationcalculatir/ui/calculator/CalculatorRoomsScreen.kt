@@ -57,7 +57,9 @@ import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingOverlay
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPage
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPrefs
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import com.skfamily.renovationcalculatir.R
+import java.util.Locale
 
 private enum class RoomType(val title: String) {
     LIVING("Жилая"),
@@ -82,10 +84,10 @@ fun CalculatorRoomsScreen(
     onContinue: (List<RoomDraftInput>) -> Unit,
 ) {
     val context = LocalContext.current
-    var livingCount by remember { mutableStateOf(0) }
-    var kitchenCount by remember { mutableStateOf(0) }
-    var bathroomCount by remember { mutableStateOf(0) }
-    var hallwayCount by remember { mutableStateOf(0) }
+    var livingCount by remember { mutableIntStateOf(0) }
+    var kitchenCount by remember { mutableIntStateOf(0) }
+    var bathroomCount by remember { mutableIntStateOf(0) }
+    var hallwayCount by remember { mutableIntStateOf(0) }
     var showOnboarding by remember { mutableStateOf(false) }
     val rooms = remember { mutableStateListOf<RoomDraft>() }
     val onboardingPrefs = remember(context) { OnboardingPrefs(context) }
@@ -292,7 +294,7 @@ fun CalculatorRoomsScreen(
                                     Spacer(modifier = Modifier.size(8.dp))
                                     Text("Общая площадь")
                                 }
-                                Text(String.format("%.1f м²", totalArea), fontWeight = FontWeight.Bold)
+                                Text(String.format(Locale.ROOT, "%.1f м²", totalArea), fontWeight = FontWeight.Bold)
                             }
                         }
                     }

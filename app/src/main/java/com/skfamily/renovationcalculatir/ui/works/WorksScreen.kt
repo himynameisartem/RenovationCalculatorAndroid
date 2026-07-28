@@ -19,8 +19,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -57,6 +57,7 @@ import com.skfamily.renovationcalculatir.ui.models.RoomDraftInput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @Composable
 fun WorksScreen(
@@ -68,6 +69,7 @@ fun WorksScreen(
     val state = vm.state
     val selectedCategory = state.categories.getOrNull(state.selectedCategoryIndex)
     val categoryTabsState = rememberLazyListState()
+    val worksListState = rememberLazyListState()
     var selectedItemForDialog by remember { mutableStateOf<CatalogItem?>(null) }
     var showSummary by remember { mutableStateOf(false) }
 
@@ -91,6 +93,7 @@ fun WorksScreen(
                 state.error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Ошибка загрузки: ${state.error}", color = Color.Red) }
                 else -> {
                     LazyColumn(
+                        state = worksListState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp),
@@ -151,6 +154,7 @@ fun WorksScreen(
         if (state.categories.isNotEmpty()) {
             val targetIndex = state.selectedCategoryIndex.coerceIn(0, state.categories.lastIndex)
             categoryTabsState.animateScrollToItem(targetIndex)
+            worksListState.scrollToItem(0)
         }
     }
 
@@ -172,7 +176,7 @@ private fun TopBackBar(onBackToRooms: () -> Unit) {
                 .clickable { onBackToRooms() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color(0xFF3D424B))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color(0xFF3D424B))
         }
     }
 }
@@ -270,7 +274,7 @@ private fun WorksSectionCard(
                                 Spacer(modifier = Modifier.height(2.dp))
                                 val qty = selectedQuantities[item.id] ?: 0.0
                                 if (qty > 0.0) {
-                                    Text("${String.format("%.1f", qty)} ${item.unit} • ${(qty * item.price).toInt()} ₽", color = Color(0xFF2A6FF3), fontSize = 12.sp)
+                                    Text("${String.format(Locale.ROOT, "%.1f", qty)} ${item.unit} • ${(qty * item.price).toInt()} ₽", color = Color(0xFF2A6FF3), fontSize = 12.sp)
                                 } else {
                                     Text("${item.price.toInt()} ₽ / ${item.unit}", color = Color(0xFF8A8E98), fontSize = 12.sp)
                                 }
@@ -305,7 +309,7 @@ private fun QuantityDialog(
 
     fun recalcFromRooms() {
         val sum = rooms.filter { roomSelection[it.name] == true }.sumOf { it.area }
-        qtyText = if (sum <= 0.0) "0" else String.format("%.1f", sum)
+        qtyText = if (sum <= 0.0) "0" else String.format(Locale.ROOT, "%.1f", sum)
     }
 
     AlertDialog(
@@ -353,7 +357,7 @@ private fun QuantityDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(modifier = Modifier.fillMaxWidth(0.82f)) {
-                                    Text("${room.name} • ${String.format("%.1f", room.area)} м²")
+                                    Text("${room.name} • ${String.format(Locale.ROOT, "%.1f", room.area)} м²")
                                 }
                                 Icon(
                                     imageVector = if (selected) Icons.Default.Remove else Icons.Default.Add,
@@ -399,7 +403,7 @@ private fun SummaryDialog(
                             Box(modifier = Modifier.fillMaxWidth(0.74f)) {
                                 Column {
                                     Text(line.title, fontSize = 14.sp)
-                                    Text("${String.format("%.1f", line.quantity)} ${line.unit} × ${line.unitPrice.toInt()} ₽", fontSize = 12.sp, color = Color(0xFF8A8E98))
+                                    Text("${String.format(Locale.ROOT, "%.1f", line.quantity)} ${line.unit} × ${line.unitPrice.toInt()} ₽", fontSize = 12.sp, color = Color(0xFF8A8E98))
                                 }
                             }
                             Text("${line.subtotal.toInt()} ₽", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -497,7 +501,11 @@ class WorksViewModel : ViewModel() {
     }
 
     fun selectCategory(index: Int) {
-        state = state.copy(selectedCategoryIndex = index.coerceIn(0, (state.categories.size - 1).coerceAtLeast(0)))
+        val newIndex = index.coerceIn(0, (state.categories.size - 1).coerceAtLeast(0))
+        if (newIndex != state.selectedCategoryIndex) {
+            expandedSections.clear()
+        }
+        state = state.copy(selectedCategoryIndex = newIndex)
     }
 
     fun isExpanded(sectionId: String): Boolean = expandedSections[sectionId] == true
@@ -520,7 +528,7 @@ class WorksViewModel : ViewModel() {
 
     fun nextCategory() {
         val next = (state.selectedCategoryIndex + 1).coerceAtMost((state.categories.size - 1).coerceAtLeast(0))
-        state = state.copy(selectedCategoryIndex = next)
+        selectCategory(next)
     }
 
     fun isLastCategory(): Boolean = state.selectedCategoryIndex >= (state.categories.size - 1).coerceAtLeast(0)

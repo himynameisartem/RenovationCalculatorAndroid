@@ -19,7 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Info
@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import java.util.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -241,7 +242,7 @@ private fun HeaderBar(
     ) {
         IconButton(onClick = onBackToWorks) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
                 tint = Color(0xFF2A2D34)
             )
@@ -607,9 +608,9 @@ private fun estimateLinesForRequest(lines: List<SummaryLine>): String? {
     if (lines.isEmpty()) return null
 
     return lines.joinToString(separator = "\n") { line ->
-        val quantity = String.format("%.1f", line.quantity)
-        val unitPrice = String.format("%.0f", line.unitPrice)
-        val subtotal = String.format("%.0f", line.subtotal)
+        val quantity = String.format(Locale.ROOT, "%.1f", line.quantity)
+        val unitPrice = String.format(Locale.ROOT, "%.0f", line.unitPrice)
+        val subtotal = String.format(Locale.ROOT, "%.0f", line.subtotal)
         "${line.title}: $quantity ${line.unit} × $unitPrice ₽ = $subtotal ₽"
     }
 }
@@ -631,5 +632,5 @@ private fun InfoBubble(modifier: Modifier = Modifier) {
     }
 }
 
-private fun Double.format0(): String = String.format("%.0f", this)
-private fun Double.format1(): String = String.format("%.1f", this)
+private fun Double.format0(): String = String.format(Locale.ROOT, "%.0f", this)
+private fun Double.format1(): String = String.format(Locale.ROOT, "%.1f", this)

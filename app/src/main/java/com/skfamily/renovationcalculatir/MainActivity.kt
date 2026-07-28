@@ -97,7 +97,7 @@ private fun MainTabsScreen() {
     var infoDialogText by remember { mutableStateOf<String?>(null) }
     var roomsForWorks by remember { mutableStateOf<List<RoomDraftInput>>(emptyList()) }
     var finalEstimateLines by remember { mutableStateOf<List<SummaryLine>>(emptyList()) }
-    var finalEstimateTotal by remember { mutableStateOf(0) }
+    var finalEstimateTotal by remember { mutableIntStateOf(0) }
     var finalEstimateRooms by remember { mutableStateOf<List<RoomDraftInput>>(emptyList()) }
     var selectedSavedEstimate by remember { mutableStateOf<SavedEstimate?>(null) }
     var calculatorResetToken by remember { mutableIntStateOf(0) }

@@ -1,6 +1,5 @@
 package com.skfamily.renovationcalculatir.ui.finalestimate
 
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,7 +84,7 @@ fun CompanyContactsSheet(
                         Icon(Icons.Default.Language, contentDescription = null, tint = Color(0xFF2A6FF3))
                         Spacer(modifier = Modifier.size(10.dp))
                         Text(
-                            text = Uri.parse(company.websiteUrl).host ?: company.websiteUrl,
+                            text = company.websiteUrl.toUri().host ?: company.websiteUrl,
                             color = Color(0xFF2A6FF3)
                         )
                     }

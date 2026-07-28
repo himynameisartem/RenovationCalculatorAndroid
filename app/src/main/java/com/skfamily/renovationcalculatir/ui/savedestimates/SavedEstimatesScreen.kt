@@ -42,6 +42,7 @@ import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingOverlay
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPage
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPrefs
 import androidx.compose.ui.platform.LocalContext
+import com.skfamily.renovationcalculatir.R
 
 @Composable
 fun SavedEstimatesScreen(
@@ -56,15 +57,8 @@ fun SavedEstimatesScreen(
         listOf(
             OnboardingPage(
                 title = "Сохраненные сметы",
-                description = "На этом экране хранятся все сохраненные расчеты, чтобы к ним можно было вернуться в любой момент."
-            ),
-            OnboardingPage(
-                title = "Просмотр деталей",
-                description = "Нажмите на нужную смету, чтобы открыть ее состав, итоговую стоимость и дополнительные действия."
-            ),
-            OnboardingPage(
-                title = "Новый расчет",
-                description = "Если сохраненных смет пока нет, отсюда можно сразу перейти к созданию нового расчета."
+                description = "Здесь хранятся ваши сохраненные расчеты. Можно открыть детали, что-то изменить, заказать звонок или удалить.",
+                imageRes = R.drawable.estimate_guide
             )
         )
     }

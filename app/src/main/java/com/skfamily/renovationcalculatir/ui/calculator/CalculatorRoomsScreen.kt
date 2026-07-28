@@ -57,6 +57,7 @@ import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingOverlay
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPage
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPrefs
 import androidx.compose.runtime.LaunchedEffect
+import com.skfamily.renovationcalculatir.R
 
 private enum class RoomType(val title: String) {
     LIVING("Жилая"),
@@ -91,16 +92,19 @@ fun CalculatorRoomsScreen(
     val onboardingPages = remember {
         listOf(
             OnboardingPage(
-                title = "Шаг 1. Помещения",
-                description = "Укажите количество комнат, затем заполните названия и площадь для расчета работ по помещениям."
+                title = "Выбор комнат.",
+                description = "Здесь вы можете выбрать количество комнат и их площадь, чтобы калькулятор посчитал все за вас. Так же вы можете пропустить этот шаг, если хотите рассчитать все самостоятельно.",
+                imageRes = R.drawable.calculator_guide_1
             ),
             OnboardingPage(
-                title = "Гибкий старт",
-                description = "Если комнаты пока не нужны, можно нажать «Пропустить» и перейти к выбору работ без них."
+                title = "Выбор работ.",
+                description = "Выберите вид работы, который вам необходим, и просто добавьте его в смету.",
+                imageRes = R.drawable.calculator_guide_2
             ),
             OnboardingPage(
-                title = "Что дальше",
-                description = "После заполнения комнат нажмите «Продолжить», чтобы перейти к категориям работ и собрать смету."
+                title = "Смета.",
+                description = "Вы выбрали нужные вам работы, пора переходить к ремонту. Выберите подходящую компанию и закажите звонок либо самостоятельно обратитесь по предоставленным контактам.",
+                imageRes = R.drawable.calculator_guide_3
             )
         )
     }

@@ -75,11 +75,11 @@ fun FinalEstimateScreen(
     val companies = remember {
         listOf(
             FinalCompany(
-                name = "ГК Поколение",
-                logoRes = R.drawable.pokolenie_logo,
-                websiteUrl = "https://gkpokolenie.ru",
-                phoneUrl = "tel:+79581005418",
-                phoneLabel = "+7 958 100-54-18",
+                name = "Remstar",
+                logoRes = R.drawable.remstar_logo,
+                websiteUrl = "https://remstar-remont.ru",
+                phoneUrl = "tel:+79454874972",
+                phoneLabel = "+7 495 487-49-72",
                 accent = Color(0xFF2A6FF3)
             ),
             FinalCompany(
@@ -101,7 +101,7 @@ fun FinalEstimateScreen(
             FinalCompany(
                 name = "ТЛР Групп",
                 logoRes = R.drawable.trl_group_logo,
-                websiteUrl = "https://skfamily.moscow",
+                websiteUrl = "https://tlr-stroy.ru",
                 phoneUrl = "tel:+74950217123",
                 phoneLabel = "+7 495 021-71-23",
                 accent = Color(0xFF5BA6F2)

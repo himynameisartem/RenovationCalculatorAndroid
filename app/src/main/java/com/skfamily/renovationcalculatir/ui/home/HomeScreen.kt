@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.skfamily.renovationcalculatir.R
+import com.skfamily.renovationcalculatir.ui.chat.ChatBubbleOverlay
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingKeys
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingOverlay
 import com.skfamily.renovationcalculatir.ui.onboarding.OnboardingPage
@@ -87,16 +88,29 @@ fun HomeScreen(
     val onboardingPages = remember {
         listOf(
             OnboardingPage(
-                title = "Добро пожаловать",
-                description = "На главном экране собраны быстрые сценарии: калькулятор, заявка на ремонт и актуальный прайс."
+                title = "Добро пожаловать в Калькулятор ремонта.",
+                description = "Калькулятор ремонта — это профессиональный инструмент для расчета сметы, который стал доступен всем потребителям.",
+                imageRes = R.drawable.home_guide_1
             ),
             OnboardingPage(
-                title = "Переход к расчету",
-                description = "Откройте калькулятор, чтобы выбрать помещения, добавить работы и собрать итоговую смету."
+                title = "Рассчитайте стоимость.",
+                description = "Нажмите на Калькулятор и самостоятельно рассчитайте стоимость своего ремонта, не прибегая к помощи инженеров-сметчиков, в легком и интуитивно понятном интерфейсе.",
+                imageRes = R.drawable.home_guide_2
             ),
             OnboardingPage(
-                title = "Дополнительные действия",
-                description = "Здесь же можно оставить заявку на ремонт и скачать актуальный прайс в PDF."
+                title = "Закажите звонок.",
+                description = "Если вы не хотите тратить время на расчеты, вы всегда можете оставить свои контакты, и наши менеджеры аккредитованных строительных компаний свяжутся с вами, чтобы сделать всю работу за вас.",
+                imageRes = R.drawable.home_guide_3
+            ),
+            OnboardingPage(
+                title = "Получите актуальный прайс.",
+                description = "Для вашего удобства наш искусственный интеллект провел анализ цен огромного количества строительных компаний и готов предоставить вам самые актуальные данные.",
+                imageRes = R.drawable.home_guide_4
+            ),
+            OnboardingPage(
+                title = "Спросите у ИИ.",
+                description = "На ваши вопросы по ремонту и услугам компании ответит наш ИИ.",
+                imageRes = R.drawable.home_guide_5
             )
         )
     }
@@ -258,6 +272,10 @@ fun HomeScreen(
                     }
                 }
             )
+        }
+
+        if (!showOnboarding && !showRequestForm && !showPriceConfirm && !isDownloadingPrice && !showDownloadError) {
+            ChatBubbleOverlay()
         }
 
         if (showOnboarding) {

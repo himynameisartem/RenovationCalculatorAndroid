@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.skfamily.renovationcalculatir"
+    namespace = "com.tekhnologiistroitelstva.renovationcalculator"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.skfamily.renovationcalculatir"
+        applicationId = "com.tekhnologiistroitelstva.renovationcalculator"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

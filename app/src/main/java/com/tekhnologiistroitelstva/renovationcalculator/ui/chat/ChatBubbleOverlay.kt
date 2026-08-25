@@ -4,15 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -46,24 +49,57 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 fun ChatBubbleOverlay(
     modifier: Modifier = Modifier,
+    cardsBottomPx: Float,
+    presentationKey: Int,
     viewModel: ChatViewModel = viewModel()
 ) {
     var isOpen by remember { mutableStateOf(false) }
+    var isHintExpanded by remember { mutableStateOf(false) }
+    var isHintDismissed by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.BottomEnd
-    ) {
+    LaunchedEffect(presentationKey) {
+        isHintDismissed = false
+        isHintExpanded = false
+        delay(250)
+
+        while (isActive && !isHintDismissed) {
+            isHintExpanded = true
+            delay(7_000)
+            if (isHintDismissed) break
+
+            isHintExpanded = false
+            delay(5_000)
+        }
+    }
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val controlHeight = 58.dp
+        val containerHeightPx = with(density) { maxHeight.toPx() }
+        val controlHeightPx = with(density) { controlHeight.toPx() }
+        val freeSpacePx = containerHeightPx - cardsBottomPx - controlHeightPx
+        val bottomPadding = if (cardsBottomPx > 0f && freeSpacePx >= 0f) {
+            with(density) { (freeSpacePx / 2f).toDp() }
+        } else {
+            16.dp
+        }
+
         if (isOpen) {
             ChatCard(
                 viewModel = viewModel,
@@ -74,31 +110,94 @@ fun ChatBubbleOverlay(
                     .imePadding()
             )
         } else {
-            FloatingActionButton(
-                onClick = { isOpen = true },
-                containerColor = Color.Transparent,
-                contentColor = Color.White,
+            ChatHintButton(
+                expanded = isHintExpanded,
+                expandedWidth = maxWidth - 32.dp,
+                bottomPadding = bottomPadding,
+                onOpenChat = {
+                    isHintDismissed = true
+                    isHintExpanded = false
+                    isOpen = true
+                },
+                onDismissHint = {
+                    isHintDismissed = true
+                    isHintExpanded = false
+                },
                 modifier = Modifier
-                    .padding(end = 22.dp, bottom = 76.dp)
-                    .size(58.dp)
+                    .align(Alignment.BottomEnd)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatHintButton(
+    expanded: Boolean,
+    expandedWidth: androidx.compose.ui.unit.Dp,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    onOpenChat: () -> Unit,
+    onDismissHint: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val animatedWidth by animateDpAsState(
+        targetValue = if (expanded) expandedWidth else 58.dp,
+        animationSpec = if (expanded) spring() else tween(durationMillis = 250),
+        label = "chat_hint_width"
+    )
+
+    Box(
+        modifier = modifier
+            .padding(end = 16.dp, bottom = bottomPadding)
+            .width(animatedWidth)
+            .height(58.dp)
+            .clip(CircleShape)
+            .background(
+                Brush.linearGradient(listOf(Color(0xFF3F7BE3), Color(0xFF5BA6F2)))
+            )
+    ) {
+        if (expanded) {
+            IconButton(
+                onClick = onDismissHint,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(44.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0xFF3F7BE3), Color(0xFF5BA6F2))
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChatBubble,
-                        contentDescription = "AI помощник"
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Закрыть подсказку",
+                    tint = Color.White.copy(alpha = 0.86f),
+                    modifier = Modifier.size(18.dp)
+                )
             }
+        }
+
+        if (expanded) {
+            Text(
+                text = "Есть вопрос по ремонту?\nСпросите ИИ-помощника",
+                fontSize = 14.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 52.dp, end = 66.dp)
+                    .clickable(onClick = onOpenChat)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(58.dp)
+                .clickable(onClick = onOpenChat),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChatBubble,
+                contentDescription = "ИИ помощник",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

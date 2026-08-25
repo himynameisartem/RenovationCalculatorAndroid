@@ -101,6 +101,7 @@ private fun MainTabsScreen() {
     var finalEstimateRooms by remember { mutableStateOf<List<RoomDraftInput>>(emptyList()) }
     var selectedSavedEstimate by remember { mutableStateOf<SavedEstimate?>(null) }
     var calculatorResetToken by remember { mutableIntStateOf(0) }
+    var homePresentationKey by remember { mutableIntStateOf(0) }
     val savedEstimatesStore = remember { SavedEstimatesStore(context) }
 
     fun clearCalculatorFlowState() {
@@ -134,6 +135,7 @@ private fun MainTabsScreen() {
     }
 
     fun navigateToHome() {
+        homePresentationKey++
         val popped = navController.popBackStack("home", inclusive = false)
         if (!popped) {
             navController.navigate("home") {
@@ -196,7 +198,8 @@ private fun MainTabsScreen() {
                         navigateToCalculatorStart()
                     },
                     onOpenRequest = {},
-                    onOpenPrice = {}
+                    onOpenPrice = {},
+                    homePresentationKey = homePresentationKey
                 )
             }
             composable("calculator") {

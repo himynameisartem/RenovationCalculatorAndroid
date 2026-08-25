@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +51,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -75,6 +79,7 @@ fun HomeScreen(
     onOpenCalculator: () -> Unit,
     onOpenRequest: () -> Unit,
     onOpenPrice: () -> Unit,
+    homePresentationKey: Int,
 ) {
     var showRequestForm by remember { mutableStateOf(false) }
     var showPriceConfirm by remember { mutableStateOf(false) }
@@ -82,9 +87,12 @@ fun HomeScreen(
     var downloadErrorText by remember { mutableStateOf<String?>(null) }
     var showDownloadError by remember { mutableStateOf(false) }
     var showOnboarding by remember { mutableStateOf(false) }
+    var homeTopInWindow by remember { mutableFloatStateOf(0f) }
+    var lastCardBottomInWindow by remember { mutableFloatStateOf(0f) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val onboardingPrefs = remember(context) { OnboardingPrefs(context) }
+    val cardsBottomPx = (lastCardBottomInWindow - homeTopInWindow).coerceAtLeast(0f)
     val onboardingPages = remember {
         listOf(
             OnboardingPage(
@@ -126,6 +134,9 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF2F2F7))
+            .onGloballyPositioned { coordinates ->
+                homeTopInWindow = coordinates.positionInWindow().y
+            }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             HeroBlock(
@@ -189,7 +200,10 @@ fun HomeScreen(
                     iconTint = Color(0xFF6CAB5F),
                     arrowTint = Color(0xFF6AAF57),
                     decorativeImageRes = R.drawable.coins_icon,
-                    decorativeImageAlpha = 0.12f
+                    decorativeImageAlpha = 0.12f,
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        lastCardBottomInWindow = coordinates.boundsInWindow().bottom
+                    }
                 )
             }
         }
@@ -275,7 +289,10 @@ fun HomeScreen(
         }
 
         if (!showOnboarding && !showRequestForm && !showPriceConfirm && !isDownloadingPrice && !showDownloadError) {
-            ChatBubbleOverlay()
+            ChatBubbleOverlay(
+                cardsBottomPx = cardsBottomPx,
+                presentationKey = homePresentationKey
+            )
         }
 
         if (showOnboarding) {
@@ -399,13 +416,14 @@ private fun HomeActionCard(
     iconTint: Color = Color(0xFF2A6FF3),
     arrowTint: Color = Color(0xFF4E535E),
     decorativeImageRes: Int? = null,
-    decorativeImageAlpha: Float = 0.1f
+    decorativeImageAlpha: Float = 0.1f,
+    modifier: Modifier = Modifier
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         shape = RoundedCornerShape(26.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(118.dp)
             .clickable(onClick = onClick)

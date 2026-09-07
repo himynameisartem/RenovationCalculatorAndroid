@@ -73,6 +73,12 @@ fun ChatBubbleOverlay(
     var isHintExpanded by remember { mutableStateOf(false) }
     var isHintDismissed by remember { mutableStateOf(false) }
 
+    LaunchedEffect(isOpen) {
+        if (isOpen) {
+            viewModel.refreshSessionState()
+        }
+    }
+
     LaunchedEffect(presentationKey) {
         isHintDismissed = false
         isHintExpanded = false
@@ -406,6 +412,14 @@ private fun ChatInputBar(
             )
         }
 
+        if (uiState.isSessionLimitReached) {
+            Text(
+                text = "Лимит 10 вопросов достигнут. Диалог очистится через 5 минут после последнего вопроса.",
+                color = Color(0xFF7A7F8A),
+                fontSize = 12.sp
+            )
+        }
+
         Text(
             text = "Ответы генерирует ИИ, он может ошибаться. Проверяйте важную информацию у менеджера.",
             color = Color(0xFF7A7F8A),
@@ -422,6 +436,7 @@ private fun ChatInputBar(
             OutlinedTextField(
                 value = uiState.draft,
                 onValueChange = onDraftChange,
+                enabled = !uiState.isSessionLimitReached,
                 placeholder = { Text("Ваш вопрос") },
                 minLines = 1,
                 maxLines = 3,
@@ -436,8 +451,14 @@ private fun ChatInputBar(
             )
 
             FloatingActionButton(
-                onClick = onSend,
-                containerColor = if (uiState.draft.isBlank() || uiState.isSending) {
+                onClick = {
+                    if (uiState.draft.isNotBlank() && !uiState.isSending && !uiState.isSessionLimitReached) {
+                        onSend()
+                    }
+                },
+                containerColor = if (
+                    uiState.draft.isBlank() || uiState.isSending || uiState.isSessionLimitReached
+                ) {
                     Color(0xFFB8BBC2)
                 } else {
                     Color(0xFF0A84FF)

@@ -2,6 +2,7 @@ package com.tekhnologiistroitelstva.renovationcalculator.ui.chat
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -9,9 +10,18 @@ import java.net.URL
 class ChatApiClient {
     private val endpoint = URL("https://cucosinepsiey.beget.app/chat")
 
-    suspend fun send(message: String): String = withContext(Dispatchers.IO) {
+    suspend fun send(messages: List<ChatMessage>): String = withContext(Dispatchers.IO) {
+        val requestMessages = JSONArray().apply {
+            messages.forEach { message ->
+                put(
+                    JSONObject()
+                        .put("role", if (message.role == ChatRole.User) "user" else "assistant")
+                        .put("content", message.text)
+                )
+            }
+        }
         val body = JSONObject()
-            .put("message", message)
+            .put("messages", requestMessages)
             .toString()
 
         val connection = (endpoint.openConnection() as HttpURLConnection).apply {

@@ -10,5 +10,6 @@ enum class ChatRole {
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val role: ChatRole,
-    val text: String
+    val text: String,
+    val imageUris: List<String> = emptyList()
 )

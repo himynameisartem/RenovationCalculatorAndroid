@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class ChatApiClient {
-    private val endpoint = URL("https://cucosinepsiey.beget.app/chat")
+    private val endpoint = URL("${BackendConfiguration.BASE_URL}/chat")
 
     suspend fun send(messages: List<ChatMessage>): String = withContext(Dispatchers.IO) {
         val requestMessages = JSONArray().apply {

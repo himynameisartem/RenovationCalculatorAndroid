@@ -1,5 +1,11 @@
 package com.tekhnologiistroitelstva.renovationcalculator.ui.chat
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +31,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,11 +47,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +61,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -59,8 +74,12 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun ChatBubbleOverlay(
@@ -217,6 +236,24 @@ private fun ChatCard(
     val uiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    var showClearConversationDialog by remember { mutableStateOf(false) }
+    var showPhotoHint by remember { mutableStateOf(false) }
+    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = 3)
+    ) { uris ->
+        if (uris.isNotEmpty()) viewModel.beginPhotoEstimate(context, uris.take(3))
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = cameraUri
+        if (success && uri != null) viewModel.beginPhotoEstimate(context, listOf(uri))
+    }
+
+    LaunchedEffect(Unit) {
+        showPhotoHint = viewModel.consumePhotoHint()
+    }
 
     LaunchedEffect(uiState.messages.size, uiState.isSending) {
         val lastIndex = uiState.messages.lastIndex + if (uiState.isSending) 1 else 0
@@ -235,6 +272,8 @@ private fun ChatCard(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             ChatHeader(
+                canClear = uiState.messages.size > 1,
+                onClear = { showClearConversationDialog = true },
                 onClose = {
                     focusManager.clearFocus()
                     onClose()
@@ -265,14 +304,73 @@ private fun ChatCard(
             ChatInputBar(
                 uiState = uiState,
                 onDraftChange = viewModel::updateDraft,
-                onSend = viewModel::send
+                onSend = viewModel::send,
+                onAddPhoto = { showPhotoSourceDialog = true },
+                showPhotoHint = showPhotoHint,
+                onDismissPhotoHint = { showPhotoHint = false }
             )
         }
+    }
+
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text("Добавить фото помещения") },
+            text = { Text("Можно добавить от одной до трёх фотографий.") },
+            confirmButton = {
+                IconButton(onClick = {
+                    showPhotoSourceDialog = false
+                    val file = File.createTempFile("room_", ".jpg", context.cacheDir)
+                    cameraUri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
+                    cameraLauncher.launch(cameraUri!!)
+                }) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = "Камера")
+                }
+            },
+            dismissButton = {
+                IconButton(onClick = {
+                    showPhotoSourceDialog = false
+                    galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = "Галерея")
+                }
+            }
+        )
+    }
+
+    if (showClearConversationDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConversationDialog = false },
+            title = { Text("Очистить диалог?") },
+            text = { Text("Сообщения и результат анализа фотографий будут удалены.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearConversationDialog = false
+                    showPhotoHint = false
+                    cameraUri = null
+                    focusManager.clearFocus()
+                    viewModel.clearConversation()
+                }) {
+                    Text("Очистить", color = Color(0xFFE53935))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConversationDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }
 
 @Composable
 private fun ChatHeader(
+    canClear: Boolean,
+    onClear: () -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit
 ) {
@@ -315,6 +413,23 @@ private fun ChatHeader(
             )
         }
 
+        IconButton(onClick = onClear, enabled = canClear) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF0F1F5)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Очистить диалог",
+                    tint = Color(0xFF7A7F8A).copy(alpha = if (canClear) 1f else 0.35f),
+                    modifier = Modifier.size(17.dp)
+                )
+            }
+        }
+
         IconButton(onClick = onClose) {
             Box(
                 modifier = Modifier
@@ -348,18 +463,53 @@ private fun ChatMessageRow(message: ChatMessage) {
             color = if (isUser) Color(0xFF0A84FF) else Color(0xFFF1F2F7),
             modifier = Modifier.fillMaxWidth(0.82f)
         ) {
-            Text(
-                text = message.text,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-                color = if (isUser) Color.White else Color(0xFF101114),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp)
-            )
+            ) {
+                if (message.imageUris.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        message.imageUris.take(3).forEach { uri ->
+                            ChatImageThumbnail(uri)
+                        }
+                    }
+                }
+                if (message.text.isNotBlank()) {
+                    Text(
+                        text = message.text,
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
+                        color = if (isUser) Color.White else Color(0xFF101114)
+                    )
+                }
+            }
         }
 
         if (!isUser) {
             Spacer(modifier = Modifier.weight(1f))
         }
+    }
+}
+
+@Composable
+private fun ChatImageThumbnail(uriString: String) {
+    val context = LocalContext.current
+    val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, uriString) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openInputStream(Uri.parse(uriString))?.use(BitmapFactory::decodeStream)
+            }.getOrNull()
+        }
+    }
+    bitmap?.let {
+        Image(
+            bitmap = it.asImageBitmap(),
+            contentDescription = "Фото помещения",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(74.dp)
+                .clip(RoundedCornerShape(10.dp))
+        )
     }
 }
 
@@ -395,7 +545,10 @@ private fun TypingRow() {
 private fun ChatInputBar(
     uiState: ChatUiState,
     onDraftChange: (String) -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    onAddPhoto: () -> Unit,
+    showPhotoHint: Boolean,
+    onDismissPhotoHint: () -> Unit
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -420,6 +573,29 @@ private fun ChatInputBar(
             )
         }
 
+        if (showPhotoHint) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFEAF2FF),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                ) {
+                    Text(
+                        text = "Для более точного рассчета можно загрузить до трех фотографий помещения.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF2E5FA7),
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onDismissPhotoHint, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Закрыть", modifier = Modifier.size(15.dp))
+                    }
+                }
+            }
+        }
+
         Text(
             text = "Ответы генерирует ИИ, он может ошибаться. Проверяйте важную информацию у менеджера.",
             color = Color(0xFF7A7F8A),
@@ -433,6 +609,18 @@ private fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            IconButton(
+                onClick = onAddPhoto,
+                enabled = !uiState.isSending,
+                modifier = Modifier.size(42.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Добавить фото",
+                    tint = Color(0xFF0A84FF)
+                )
+            }
+
             OutlinedTextField(
                 value = uiState.draft,
                 onValueChange = onDraftChange,

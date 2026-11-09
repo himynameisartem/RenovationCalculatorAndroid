@@ -1,5 +1,7 @@
 package com.tekhnologiistroitelstva.renovationcalculator.ui.request
 
+import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,12 +22,19 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderKind
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderScheduler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.SpanStyle
@@ -50,21 +59,50 @@ private const val POLICY_URL = "https://skfamily.moscow/Privacy_Policy.pdf"
 fun RequestFormSheet(
     estimateLinesText: String?,
     onDismiss: () -> Unit,
+    onSubmitted: () -> Unit = {},
 ) {
+    val context = LocalContext.current.applicationContext
+    val activity = LocalContext.current as? ComponentActivity
+    val prefs = remember(context) { context.getSharedPreferences("unfinished_request", Context.MODE_PRIVATE) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var comment by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(prefs.getString("name", "").orEmpty()) }
+    var phone by remember { mutableStateOf(prefs.getString("phone", "").orEmpty()) }
+    var email by remember { mutableStateOf(prefs.getString("email", "").orEmpty()) }
+    var comment by remember { mutableStateOf(prefs.getString("comment", "").orEmpty()) }
     var agreeToPolicy by remember { mutableStateOf(false) }
     var showAlert by remember { mutableStateOf(false) }
     var alertTitle by remember { mutableStateOf("") }
     var alertMessage by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
+    var didSubmit by remember { mutableStateOf(false) }
+
+    fun scheduleIfNeeded() {
+        val hasInput = phone.count(Char::isDigit) >= 3 || name.isNotBlank() ||
+            email.isNotBlank() || comment.isNotBlank()
+        if (!didSubmit && !isSending && hasInput) {
+            ReminderScheduler.cancel(context, ReminderKind.SAVED_ESTIMATE)
+            ReminderScheduler.schedule(context, ReminderKind.REQUEST)
+        }
+    }
+
+    fun dismissForm() {
+        scheduleIfNeeded()
+        onDismiss()
+    }
+
+    LaunchedEffect(Unit) { ReminderScheduler.cancel(context, ReminderKind.REQUEST) }
+    DisposableEffect(activity) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) scheduleIfNeeded()
+            if (event == Lifecycle.Event.ON_START) ReminderScheduler.cancel(context, ReminderKind.REQUEST)
+        }
+        activity?.lifecycle?.addObserver(observer)
+        onDispose { activity?.lifecycle?.removeObserver(observer) }
+    }
 
     val digitsOnlyPhone = phone.filter(Char::isDigit)
     val isPhoneValid = digitsOnlyPhone.length >= 10
@@ -72,7 +110,7 @@ fun RequestFormSheet(
     val canSubmit = isPhoneValid && isEmailValid && agreeToPolicy
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::dismissForm,
         sheetState = sheetState
     ) {
         Column(
@@ -95,7 +133,10 @@ fun RequestFormSheet(
 
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = {
+                    name = it
+                    prefs.edit().putString("name", it).apply()
+                },
                 label = { Text("Имя (необязательно)") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -103,7 +144,10 @@ fun RequestFormSheet(
 
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = it },
+                onValueChange = {
+                    phone = it
+                    prefs.edit().putString("phone", it).apply()
+                },
                 label = { Text("Телефон") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier = Modifier.fillMaxWidth()
@@ -121,7 +165,10 @@ fun RequestFormSheet(
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    prefs.edit().putString("email", it).apply()
+                },
                 label = { Text("Email") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth()
@@ -139,7 +186,10 @@ fun RequestFormSheet(
 
             OutlinedTextField(
                 value = comment,
-                onValueChange = { comment = it },
+                onValueChange = {
+                    comment = it
+                    prefs.edit().putString("comment", it).apply()
+                },
                 label = { Text("Комментарий (необязательно)") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
@@ -190,6 +240,11 @@ fun RequestFormSheet(
                             estimateLinesText = estimateLinesText
                         ).fold(
                             onSuccess = {
+                                didSubmit = true
+                                prefs.edit().clear().apply()
+                                ReminderScheduler.cancel(context, ReminderKind.REQUEST)
+                                ReminderScheduler.cancel(context, ReminderKind.SAVED_ESTIMATE)
+                                onSubmitted()
                                 alertTitle = "Успешно"
                                 alertMessage = "Заявка принята!"
                                 showAlert = true
@@ -228,7 +283,7 @@ fun RequestFormSheet(
         AlertDialog(
             onDismissRequest = {
                 showAlert = false
-                if (alertTitle == "Успешно") onDismiss()
+                if (alertTitle == "Успешно") dismissForm()
             },
             title = { Text(alertTitle) },
             text = { Text(alertMessage) },
@@ -236,7 +291,7 @@ fun RequestFormSheet(
                 Button(
                     onClick = {
                         showAlert = false
-                        if (alertTitle == "Успешно") onDismiss()
+                        if (alertTitle == "Успешно") dismissForm()
                     }
                 ) {
                     Text("OK")

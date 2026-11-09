@@ -15,8 +15,8 @@ android {
         applicationId = "com.tekhnologiistroitelstva.renovationcalculator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 5
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.appmetrica.analytics)
+    implementation("androidx.work:work-runtime:2.12.0")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.30.0")
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

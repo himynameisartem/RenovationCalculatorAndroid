@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,8 +81,11 @@ fun HomeScreen(
     onOpenRequest: () -> Unit,
     onOpenPrice: () -> Unit,
     homePresentationKey: Int,
+    reminderAction: String? = null,
+    onReminderHandled: () -> Unit = {},
 ) {
     var showRequestForm by remember { mutableStateOf(false) }
+    var chatOpenRequestToken by remember { mutableIntStateOf(0) }
     var showPriceConfirm by remember { mutableStateOf(false) }
     var isDownloadingPrice by remember { mutableStateOf(false) }
     var downloadErrorText by remember { mutableStateOf<String?>(null) }
@@ -127,6 +131,19 @@ fun HomeScreen(
         if (onboardingPrefs.shouldShow(OnboardingKeys.HOME)) {
             showOnboarding = true
             onboardingPrefs.markShown(OnboardingKeys.HOME)
+        }
+    }
+
+    LaunchedEffect(reminderAction) {
+        when (reminderAction) {
+            "request" -> {
+                showRequestForm = true
+                onReminderHandled()
+            }
+            "chat" -> {
+                chatOpenRequestToken++
+                onReminderHandled()
+            }
         }
     }
 
@@ -291,7 +308,8 @@ fun HomeScreen(
         if (!showOnboarding && !showRequestForm && !showPriceConfirm && !isDownloadingPrice && !showDownloadError) {
             ChatBubbleOverlay(
                 cardsBottomPx = cardsBottomPx,
-                presentationKey = homePresentationKey
+                presentationKey = homePresentationKey,
+                openRequestToken = chatOpenRequestToken
             )
         }
 

@@ -2,6 +2,7 @@ package com.tekhnologiistroitelstva.renovationcalculator.ui.chat
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,12 +50,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,7 +77,11 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.core.content.FileProvider
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderKind
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -86,15 +93,44 @@ fun ChatBubbleOverlay(
     modifier: Modifier = Modifier,
     cardsBottomPx: Float,
     presentationKey: Int,
+    openRequestToken: Int = 0,
     viewModel: ChatViewModel = viewModel()
 ) {
+    val context = LocalContext.current.applicationContext
+    val activity = LocalContext.current as? ComponentActivity
+    val chatState by viewModel.uiState.collectAsState()
+    val latestUserMessageId = chatState.messages.lastOrNull { it.role == ChatRole.User }?.id
     var isOpen by remember { mutableStateOf(false) }
     var isHintExpanded by remember { mutableStateOf(false) }
     var isHintDismissed by remember { mutableStateOf(false) }
 
     LaunchedEffect(isOpen) {
         if (isOpen) {
+            ReminderScheduler.cancel(context, ReminderKind.CHAT)
             viewModel.refreshSessionState()
+        } else {
+            ReminderScheduler.scheduleChatForMessage(context, latestUserMessageId)
+        }
+    }
+
+    LaunchedEffect(openRequestToken) {
+        if (openRequestToken > 0) isOpen = true
+    }
+
+    val currentMessageId by rememberUpdatedState(latestUserMessageId)
+    val currentIsOpen by rememberUpdatedState(isOpen)
+    DisposableEffect(activity) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                ReminderScheduler.scheduleChatForMessage(context, currentMessageId)
+            } else if (event == Lifecycle.Event.ON_START && currentIsOpen) {
+                ReminderScheduler.cancel(context, ReminderKind.CHAT)
+            }
+        }
+        activity?.lifecycle?.addObserver(observer)
+        onDispose {
+            activity?.lifecycle?.removeObserver(observer)
+            ReminderScheduler.scheduleChatForMessage(context, currentMessageId)
         }
     }
 
@@ -354,6 +390,7 @@ private fun ChatCard(
                     cameraUri = null
                     focusManager.clearFocus()
                     viewModel.clearConversation()
+                    ReminderScheduler.cancel(context, ReminderKind.CHAT)
                 }) {
                     Text("Очистить", color = Color(0xFFE53935))
                 }

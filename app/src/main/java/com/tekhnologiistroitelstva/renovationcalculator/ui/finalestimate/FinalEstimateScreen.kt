@@ -66,12 +66,14 @@ fun FinalEstimateScreen(
     total: Int,
     onBackToWorks: () -> Unit,
     onSaveEstimate: () -> String,
+    onSavedEstimate: () -> Unit = {},
 ) {
     var infoVisible by remember { mutableStateOf(false) }
     var selectedCompany by remember { mutableStateOf<FinalCompany?>(null) }
     var showContactsSheet by remember { mutableStateOf(false) }
     var showRequestForm by remember { mutableStateOf(false) }
     var saveDialogText by remember { mutableStateOf<String?>(null) }
+    var didSubmitRequest by remember { mutableStateOf(false) }
 
     val companies = remember {
         listOf(
@@ -139,6 +141,9 @@ fun FinalEstimateScreen(
                     total = total,
                     onSaveClick = {
                         saveDialogText = onSaveEstimate()
+                        if (saveDialogText?.startsWith("Смета сохранена") == true && !didSubmitRequest) {
+                            onSavedEstimate()
+                        }
                     }
                 )
 
@@ -198,7 +203,8 @@ fun FinalEstimateScreen(
     if (showRequestForm) {
         RequestFormSheet(
             estimateLinesText = estimateLinesForRequest(lines),
-            onDismiss = { showRequestForm = false }
+            onDismiss = { showRequestForm = false },
+            onSubmitted = { didSubmitRequest = true }
         )
     }
 

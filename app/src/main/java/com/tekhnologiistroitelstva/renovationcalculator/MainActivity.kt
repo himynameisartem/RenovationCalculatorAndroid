@@ -1,7 +1,12 @@
 package com.tekhnologiistroitelstva.renovationcalculator
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -34,6 +39,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +57,9 @@ import androidx.navigation.compose.rememberNavController
 import com.tekhnologiistroitelstva.renovationcalculator.ui.calculator.CalculatorRoomsScreen
 import com.tekhnologiistroitelstva.renovationcalculator.data.SavedEstimate
 import com.tekhnologiistroitelstva.renovationcalculator.data.SavedEstimatesStore
+import com.tekhnologiistroitelstva.renovationcalculator.data.UnfinishedEstimateStore
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderKind
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderScheduler
 import com.tekhnologiistroitelstva.renovationcalculator.ui.finalestimate.FinalEstimateScreen
 import com.tekhnologiistroitelstva.renovationcalculator.ui.home.HomeScreen
 import com.tekhnologiistroitelstva.renovationcalculator.ui.models.RoomDraftInput
@@ -58,21 +68,61 @@ import com.tekhnologiistroitelstva.renovationcalculator.ui.theme.RenovationCalcu
 import com.tekhnologiistroitelstva.renovationcalculator.ui.works.SummaryLine
 import com.tekhnologiistroitelstva.renovationcalculator.ui.works.WorksScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        @Volatile var isAppVisible: Boolean = false
+            private set
+    }
+
+    private var reminderKind by mutableStateOf<String?>(null)
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        reminderKind = intent.getStringExtra(ReminderScheduler.EXTRA_KIND)
         enableEdgeToEdge()
         setContent {
             RenovationCalculatirTheme {
-                AppRoot()
+                AppRoot(reminderKind) { reminderKind = null }
             }
         }
+        lifecycleScope.launch {
+            delay(3_500)
+            val prefs = getSharedPreferences("reminder_state", MODE_PRIVATE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !prefs.getBoolean("permission_asked", false) &&
+                ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                !isFinishing
+            ) {
+                prefs.edit().putBoolean("permission_asked", true).apply()
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        reminderKind = intent.getStringExtra(ReminderScheduler.EXTRA_KIND)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isAppVisible = true
+    }
+
+    override fun onStop() {
+        isAppVisible = false
+        super.onStop()
     }
 }
 
 @Composable
-private fun AppRoot() {
+private fun AppRoot(reminderKind: String?, onReminderConsumed: () -> Unit) {
     var showLaunch by remember { mutableStateOf(true) }
     var showLaunchProgress by remember { mutableStateOf(false) }
 
@@ -86,12 +136,12 @@ private fun AppRoot() {
     if (showLaunch) {
         LaunchLoadingScreen(showProgress = showLaunchProgress)
     } else {
-        MainTabsScreen()
+        MainTabsScreen(reminderKind, onReminderConsumed)
     }
 }
 
 @Composable
-private fun MainTabsScreen() {
+private fun MainTabsScreen(reminderKind: String?, onReminderConsumed: () -> Unit) {
     val navController = rememberNavController()
     val context = LocalContext.current.applicationContext
     var infoDialogText by remember { mutableStateOf<String?>(null) }
@@ -102,6 +152,7 @@ private fun MainTabsScreen() {
     var selectedSavedEstimate by remember { mutableStateOf<SavedEstimate?>(null) }
     var calculatorResetToken by remember { mutableIntStateOf(0) }
     var homePresentationKey by remember { mutableIntStateOf(0) }
+    var homeReminderAction by remember { mutableStateOf<String?>(null) }
     val savedEstimatesStore = remember { SavedEstimatesStore(context) }
 
     fun clearCalculatorFlowState() {
@@ -113,6 +164,7 @@ private fun MainTabsScreen() {
     }
 
     fun navigateToCalculatorStart() {
+        ReminderScheduler.cancel(context, ReminderKind.ESTIMATE)
         clearCalculatorFlowState()
         calculatorResetToken++
         val popped = navController.popBackStack("calculator", inclusive = false)
@@ -125,6 +177,7 @@ private fun MainTabsScreen() {
     }
 
     fun navigateToSavedEstimatesList() {
+        ReminderScheduler.cancel(context, ReminderKind.SAVED_ESTIMATE)
         val popped = navController.popBackStack("estimates", inclusive = false)
         if (!popped) {
             navController.navigate("estimates") {
@@ -143,6 +196,25 @@ private fun MainTabsScreen() {
                 restoreState = true
             }
         }
+    }
+
+    LaunchedEffect(reminderKind) {
+        when (ReminderKind.fromKey(reminderKind)) {
+            ReminderKind.REQUEST, ReminderKind.CHAT -> {
+                homeReminderAction = reminderKind
+                navigateToHome()
+            }
+            ReminderKind.ESTIMATE -> {
+                val draft = UnfinishedEstimateStore.load(context)
+                if (draft != null) {
+                    roomsForWorks = draft.rooms
+                    navController.navigate("works") { launchSingleTop = true }
+                } else navigateToCalculatorStart()
+            }
+            ReminderKind.SAVED_ESTIMATE -> navigateToSavedEstimatesList()
+            null -> return@LaunchedEffect
+        }
+        onReminderConsumed()
     }
 
     val tabs = listOf(
@@ -199,7 +271,9 @@ private fun MainTabsScreen() {
                     },
                     onOpenRequest = {},
                     onOpenPrice = {},
-                    homePresentationKey = homePresentationKey
+                    homePresentationKey = homePresentationKey,
+                    reminderAction = homeReminderAction,
+                    onReminderHandled = { homeReminderAction = null }
                 )
             }
             composable("calculator") {
@@ -236,12 +310,18 @@ private fun MainTabsScreen() {
                     total = finalEstimateTotal,
                     onBackToWorks = { navController.popBackStack() },
                     onSaveEstimate = {
-                        savedEstimatesStore.saveEstimate(
+                        val message = savedEstimatesStore.saveEstimate(
                             total = finalEstimateTotal,
                             rooms = finalEstimateRooms,
                             selectedItems = finalEstimateLines.associate { it.itemId to it.quantity },
                             lines = finalEstimateLines
                         )
+                        UnfinishedEstimateStore.clear(context)
+                        ReminderScheduler.cancel(context, ReminderKind.ESTIMATE)
+                        message
+                    },
+                    onSavedEstimate = {
+                        ReminderScheduler.schedule(context, ReminderKind.SAVED_ESTIMATE)
                     }
                 )
             }
@@ -345,6 +425,6 @@ private data class MainTab(
 @Composable
 private fun AppRootPreview() {
     RenovationCalculatirTheme {
-        AppRoot()
+        AppRoot(null) {}
     }
 }

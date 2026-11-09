@@ -1,5 +1,7 @@
 package com.tekhnologiistroitelstva.renovationcalculator.ui.works
 
+import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -42,6 +45,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,6 +59,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tekhnologiistroitelstva.renovationcalculator.data.CatalogCategory
 import com.tekhnologiistroitelstva.renovationcalculator.data.CatalogItem
 import com.tekhnologiistroitelstva.renovationcalculator.data.CatalogRepository
+import com.tekhnologiistroitelstva.renovationcalculator.data.UnfinishedEstimate
+import com.tekhnologiistroitelstva.renovationcalculator.data.UnfinishedEstimateStore
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderKind
+import com.tekhnologiistroitelstva.renovationcalculator.notifications.ReminderScheduler
 import com.tekhnologiistroitelstva.renovationcalculator.ui.models.RoomDraftInput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -66,6 +76,9 @@ fun WorksScreen(
     onFinish: (List<SummaryLine>, Int) -> Unit,
     vm: WorksViewModel = viewModel()
 ) {
+    val context = LocalContext.current.applicationContext
+    val activity = LocalContext.current as? ComponentActivity
+    var finished by remember { mutableStateOf(false) }
     val state = vm.state
     val selectedCategory = state.categories.getOrNull(state.selectedCategoryIndex)
     val categoryTabsState = rememberLazyListState()
@@ -123,7 +136,11 @@ fun WorksScreen(
                 isLastCategory = vm.isLastCategory(),
                 onOpenSummary = { showSummary = true },
                 onNext = { vm.nextCategory() },
-                onFinish = { onFinish(vm.summaryLines(), vm.totalSum()) }
+                onFinish = {
+                    finished = true
+                    ReminderScheduler.cancel(context, ReminderKind.ESTIMATE)
+                    onFinish(vm.summaryLines(), vm.totalSum())
+                }
             )
         }
     }
@@ -158,7 +175,28 @@ fun WorksScreen(
         }
     }
 
-    LaunchedEffect(Unit) { vm.loadIfNeeded() }
+    LaunchedEffect(vm, rooms) {
+        vm.attachDraft(context, rooms)
+        ReminderScheduler.cancel(context, ReminderKind.ESTIMATE)
+        vm.loadIfNeeded()
+    }
+
+    DisposableEffect(activity, vm, rooms) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && !finished && vm.selectedQuantities.isNotEmpty()) {
+                ReminderScheduler.schedule(context, ReminderKind.ESTIMATE)
+            } else if (event == Lifecycle.Event.ON_START) {
+                ReminderScheduler.cancel(context, ReminderKind.ESTIMATE)
+            }
+        }
+        activity?.lifecycle?.addObserver(observer)
+        onDispose {
+            activity?.lifecycle?.removeObserver(observer)
+            if (!finished && vm.selectedQuantities.isNotEmpty()) {
+                ReminderScheduler.schedule(context, ReminderKind.ESTIMATE)
+            }
+        }
+    }
 }
 
 @Composable
@@ -489,6 +527,27 @@ class WorksViewModel : ViewModel() {
     private val expandedSections = mutableStateMapOf<String, Boolean>()
 
     private val repo = CatalogRepository()
+    private var draftContext: Context? = null
+    private var draftRooms: List<RoomDraftInput> = emptyList()
+
+    fun attachDraft(context: Context, rooms: List<RoomDraftInput>) {
+        if (draftContext != null && draftRooms == rooms) return
+        draftContext = context.applicationContext
+        draftRooms = rooms
+        selectedQuantities.clear()
+        val saved = UnfinishedEstimateStore.load(context)
+        if (saved?.rooms == rooms) selectedQuantities.putAll(saved.selectedItems)
+    }
+
+    private fun persistDraft() {
+        val context = draftContext ?: return
+        if (selectedQuantities.isEmpty()) {
+            UnfinishedEstimateStore.clear(context)
+            ReminderScheduler.cancel(context, ReminderKind.ESTIMATE)
+        } else {
+            UnfinishedEstimateStore.save(context, UnfinishedEstimate(draftRooms, selectedQuantities.toMap()))
+        }
+    }
 
     fun loadIfNeeded() {
         if (state.categories.isNotEmpty() || state.isLoading) return
@@ -515,15 +574,18 @@ class WorksViewModel : ViewModel() {
     }
 
     fun addItem(item: CatalogItem, quantity: Double) {
-        selectedQuantities[item.id] = quantity
+        if (quantity > 0) selectedQuantities[item.id] = quantity else selectedQuantities.remove(item.id)
+        persistDraft()
     }
 
     fun removeItem(itemId: String) {
         selectedQuantities.remove(itemId)
+        persistDraft()
     }
 
     fun resetAll() {
         selectedQuantities.clear()
+        persistDraft()
     }
 
     fun nextCategory() {
